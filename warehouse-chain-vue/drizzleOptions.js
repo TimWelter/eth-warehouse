@@ -1,4 +1,4 @@
-import Warehouse from '../Warehouse chain/build/contracts/Warehouse.json'
+import Warehouse from '../warehouse-chain-contracts/build/contracts/Warehouse.json'
 
 const options = {
   web3: {
