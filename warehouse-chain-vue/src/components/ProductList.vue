@@ -1,35 +1,91 @@
 <template>
   <div>
-    <v-data-table
-      :headers="headers"
-      :items="products"
-      item-key="name"
-    ></v-data-table>
+    <v-card class="ma-2">
+      <v-card-title>
+        <div class="mr-5">Products</div>
+        <v-text-field v-model="search" label="Search" class="mx-4 px-5">
+        </v-text-field>
+
+        <v-dialog v-model="addProductDialog" width="500">
+          <template v-slot:activator="{ on, attrs }">
+            <v-btn
+              color="primary"
+              elevation="2"
+              x-large
+              icon
+              v-bind="attrs"
+              v-on="on"
+              ><v-icon>mdi-book-plus</v-icon></v-btn
+            >
+          </template>
+
+          <add-product @add-product="onNewProduct()"></add-product>
+        </v-dialog>
+        <v-dialog v-model="quantityDialog" width="500"> 
+          <quantity :product="selectedProduct" @quantity-done="closeQuantityDialog()" :checkIn="checkIn" ></quantity>
+        </v-dialog>
+      </v-card-title>
+      <v-data-table
+        :loading="!isDrizzleInitialized"
+        :headers="headers"
+        :items="products"
+        item-key="id"
+        :search="search"
+      >
+        <template v-slot:item.actions="{ item }">
+          <v-btn small class="mx-1" color="red" @click="openQuantityDialog(false, item)"> Check out</v-btn>
+          <v-btn small class="mx-1" color="blue" @click="openQuantityDialog(true, item)"> Check in</v-btn>
+        </template>
+      </v-data-table>
+    </v-card>
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
-import util from "../util/util"
-const args = {
+import Quantity from './Quantity.vue';
+const getProductArgs = {
   contractName: "Warehouse",
   method: "getAllProducts",
   methodArgs: "",
 };
 export default {
-  name: "ProductList",
+  components: { Quantity },
+  name: "product-list",
   data() {
     return {
       products: [],
+      search: "",
+      addProductDialog: false,
+      quantityDialog: false,
+      checkIn: false,
+      selectedProduct: null
     };
   },
+  methods: {
+    onNewProduct() {
+      this.addProductDialog = false
+    },
+    openQuantityDialog(checkIn, product) {
+      this.checkIn = checkIn
+      this.selectedProduct = product
+      this.quantityDialog = true
+    },
+    closeQuantityDialog() {
+      this.quantityDialog = false;
+    }
+    
+  },
   computed: {
+    ...mapGetters("drizzle", ["drizzleInstance", "isDrizzleInitialized"]),
     ...mapGetters("contracts", ["getContractData"]),
-
-    contractData() {
+    utils() {
+      return this.drizzleInstance.web3.utils
+    },
+    productData() {
       return this.getContractData({
-        contract: args.contractName,
-        method: args.method,
+        contract: getProductArgs.contractName,
+        method: getProductArgs.method,
       });
     },
 
@@ -49,23 +105,28 @@ export default {
           text: "Locatie",
           value: "location",
         },
+        { text: 'Actions', value: 'actions', sortable: false },
+
       ];
     },
   },
+
   created() {
-    this.$store.dispatch("drizzle/REGISTER_CONTRACT", args);
+    this.$store.dispatch("drizzle/REGISTER_CONTRACT", getProductArgs);
   },
   watch: {
-    contractData: function (newData, oldData) {
-      if (oldData == "loading") {
-        this.contractData.forEach((product) => {
+    productData: function () {
+      // if (oldData == "loading" || newData.length == oldData.length + 1 || oldData !== newData) {
+        this.products = []
+        this.productData.forEach((product) => {
           this.products.push({
-            name: util.hexToAscii(product[0]),
-            quantity: product[1],
-            location: product[2][0] + util.hexToAscii(product[2][1]),
+            id: product[0],
+            name: this.utils.toAscii(product[1]),
+            quantity: product[2],
+            location: product[3][0] + this.utils.toAscii(product[3][1]),
           });
         });
-      }
+      // }
     },
   },
 };

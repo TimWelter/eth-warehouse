@@ -3,9 +3,12 @@ pragma experimental ABIEncoderV2;
 
 
 contract Warehouse {
+    event AddProduct(address from, Product product, uint date);
+
     address public owner = msg.sender;
     mapping(address => bool) workerList;
     mapping(address => bool) readOnlyList;
+    mapping(address => bytes32) usernameList;
 
     struct Location {
         uint256 locationNumber;
@@ -13,6 +16,7 @@ contract Warehouse {
     }
 
     struct Product {
+        uint id;
         bytes32 name;
         uint256 quantity;
         Location location;
@@ -44,6 +48,18 @@ contract Warehouse {
         _;
     }
 
+    function setUsername(address _address, bytes32 name) public onlyAdmin {
+        usernameList[_address] = name;
+    }
+
+    function chooseUsername(bytes32 name) public readOnly {
+        usernameList[msg.sender] = name;
+    }
+
+    function getUsername() public view readOnly returns (bytes32) {
+        return usernameList[msg.sender];
+    }
+
     function addWorker(address _address) public onlyAdmin {
         readOnlyList[_address] = true;
         workerList[_address] = true;
@@ -72,7 +88,26 @@ contract Warehouse {
     }
 
     function addProduct(bytes32 name, uint256 quantity, uint256 locationNumber, bytes32 locationLetter) public onlyWorker {
-        productStructs.push(Product(name, quantity,  Location(locationNumber, locationLetter)));
+        // uint id = 0;
+        // if(productStructs.length != 0) {
+        //     id = productStructs.length - 1;
+        // }
+        Product memory product = Product(productStructs.length, name, quantity,  Location(locationNumber, locationLetter));
+        productStructs.push(product);
+        emit AddProduct(msg.sender, product, now);
+    }
+
+    function checkOutProduct(uint id, uint amount) public onlyWorker returns (bool) {
+        if(productStructs[id].quantity - amount >= 0) {
+            productStructs[id].quantity -= amount;
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    function checkInProduct(uint id, uint amount) public onlyWorker {
+        productStructs[id].quantity += amount;
     }
 
 }

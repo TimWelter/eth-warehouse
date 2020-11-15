@@ -11,10 +11,9 @@ const options = {
 
   // The contracts to monitor
   contracts: [Warehouse],
-//   events: {
-//     // monitor SimpleStorage.StorageSet events
-//     SimpleStorage: ['StorageSet']
-//   },
+  events: {
+    Warehouse: ['AddProduct']
+  },
   polls: {
     // check accounts ever 15 seconds
     accounts: 15000
